@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Executed by login shells.
+# Not read by bash(1), if ~/.bash_profile or ~/.bash_login exists.
+# shellcheck disable=SC1090
+# shellcheck disable=SC2174
+
+# Load environment variables.
+[ -f ~/.config/sh/environ ] && . ~/.config/sh/environ
+
+# Tell the Shell used by default.
+export SHELL=${SHELL:-/bin/zsh}
+
+# Path to the zsh configuration.
+export ZSH=$XDG_CONFIG/zsh/.zshrc
+
+# Create the XDG folders if it's not done yet.
+test -d "$XDG_BIN_HOME"    || mkdir -p -m 0700 "$XDG_BIN_HOME"
+test -d "$XDG_CACHE_HOME"  || mkdir -p -m 0700 "$XDG_CACHE_HOME"
+test -d "$XDG_CONFIG_HOME" || mkdir -p -m 0700 "$XDG_CONFIG_HOME"
+test -d "$XDG_DATA_HOME"   || mkdir -p -m 0700 "$XDG_DATA_HOME"
+test -d "$XDG_LIB_HOME"    || mkdir -p -m 0700 "$XDG_LIB_HOME"
