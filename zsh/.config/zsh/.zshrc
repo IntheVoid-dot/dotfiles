@@ -6,6 +6,8 @@
 
 export HISTFILE="$XDG_CACHE_HOME/zsh/zsh_history"
 
+autoload -U compinit; compinit
+
 setopt always_to_end          # Move the cursor to the end of the word after each completion.
 setopt auto_cd                # If command is a path, cd into it.
 setopt auto_pushd             # Make cd push old dir in dir stack.
@@ -53,10 +55,18 @@ if [ ! -d $ZDOTDIR/plugins/zsh-autosuggestions ]; then
     git clone https://github.com/zsh-users/zsh-autosuggestions.git $ZDOTDIR/plugins/zsh-autosuggestions
 fi
 
+
+if [ ! -d $ZDOTDIR/plugins/zsh-completions ]; then
+    git clone https://github.com/zsh-users/zsh-completions.git $ZDOTDIR/plugins/zsh-completions
+fi
+
+
 if [ ! -d $ZDOTDIR/plugins/zsh-syntax-highlighting ]; then
     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZDOTDIR/plugins/zsh-syntax-highlighting
 fi
 
+source ~/.config/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+source ~/.config/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=11'
 
