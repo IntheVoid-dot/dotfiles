@@ -1,0 +1,254 @@
+#+title: Void — README
+#+subtitle: Constitution (source of truth)
+#+options: toc:2 num:nil
+#+startup: overview
+
+* Void
+
+#+begin_quote
+Void is not the absence of things. It is the absence of noise.
+#+end_quote
+
+Void est une configuration *Emacs vanilla*, austère mais accueillante, pensée pour la concentration,
+la lisibilité et la maintenabilité sur le long terme.
+
+Elle s’adresse à un usage quotidien sérieux : édition de texte, code, documentation, réflexion.
+
+* Principes
+
+- *Le code au centre* : pas de magie implicite, pas de DSL inutile.
+- *Vanilla Emacs* : priorité aux fonctionnalités natives (project.el, eglot, flymake).
+- *Lisibilité > esthétique* : l’UI sert l’attention, jamais l’inverse.
+- *Stabilité par défaut* : dépendances pinnées, comportement reproductible.
+- *Propreté absolue* : aucun fichier généré ne pollue les projets ni la racine.
+
+* Environnement cible
+
+- Emacs *31.0.50*
+- GNU/Linux
+- Chemin XDG : =~/.config/emacs/=
+
+* Layout du dépôt
+
+#+begin_src text
+~/.config/emacs/
+├── early-init.el        ; performances + désactivation du bruit UI
+├── init.el              ; chargeur principal
+├── lisp/                ; code Void (aucun code tiers)
+│   ├── void-core.el
+│   ├── void-sanity.el
+│   ├── void-ui.el
+│   ├── void-completion.el
+│   ├── void-dev.el
+│   ├── void-org.el
+│   └── void-pins.el     ; pins des dépendances (généré)
+├── site-lisp/           ; dépendances clonées (1 repo = 1 dossier)
+├── bin/                 ; scripts de gestion (bootstrap, update, pin…)
+├── var/                 ; état persistant (backups, history, tramp…)
+├── cache/               ; caches régénérables (eln, etc.)
+└── README.org           ; documentation et source of truth
+#+end_src
+
+* Politique de propreté
+
+** Règle fondamentale
+
+- *Racine = sources uniquement*
+- *Généré = var/ ou cache/*
+
+** var/ (persistant)
+
+Contient les données que Void accepte de conserver entre les sessions :
+
+- backups
+- auto-save-list
+- savehist / recentf
+- bookmarks
+- tramp
+- project state
+
+** cache/ (jetable)
+
+- cache de compilation native (=eln-cache=)
+- caches temporaires divers
+
+Aucun fichier généré ne doit apparaître au root ni dans les projets utilisateur.
+
+* Dépendances Void Base (v1)
+
+Ces dépendances constituent le *socle minimal* de Void. Elles sont :
+
+- clonées dans =site-lisp/=
+- *pinnées par commit*
+- chargées explicitement
+
+** Minibuffer & complétion
+
+- vertico
+- marginalia
+- orderless
+- embark
+- consult
+- embark-consult
+
+** Complétion in-buffer
+
+- corfu
+- cape
+
+** Focus / écriture
+
+- olivetti
+
+#+begin_quote
+Toute nouvelle dépendance doit être ajoutée explicitement et pinnée.
+#+end_quote
+
+* Pins & reproductibilité (spec)
+
+Void vise un état *reproductible par défaut* : mêmes dépendances, mêmes commits, mêmes chemins,
+et un comportement déterministe au démarrage.
+
+Les pins sont définis dans :
+
+- =lisp/void-pins.el=
+
+Ce fichier est *versionné* et constitue la source de vérité des versions exactes des dépendances clonées
+dans =site-lisp/=.
+
+** Objectifs
+
+- Décrire *exactement* quelles dépendances sont utilisées (URL) et *à quel commit* (SHA).
+- Permettre un bootstrap reproductible sur une nouvelle machine.
+- Garder un format *lisible* et *éditable à la main*.
+- Fournir un point d’entrée simple pour les scripts shell dans =bin/=.
+
+** Contraintes / invariants
+
+- Un repo = un dossier : =site-lisp/<name>/=
+- Chaque dépendance doit avoir :
+  - un *nom stable* (symbol ou string)
+  - une *URL git*
+  - un *commit SHA* (pin)
+- L’ordre des entrées doit être *stable* (pour des diffs propres).
+- Aucune dépendance implicite : si un paquet en requiert un autre, il doit apparaître explicitement ici.
+- Le fichier doit être chargeable sans effets de bord (déclarations uniquement).
+
+** Données exposées par =void-pins.el=
+
+Le fichier expose au minimum :
+
+- =void-pins= : liste/alist des dépendances et leurs pins
+- (optionnel) =void-pins-version= : version du format (utile si on fait évoluer la structure)
+
+*** Structure recommandée (format)
+
+Chaque entrée contient :
+
+- =:name=  nom local du paquet (sert au dossier =site-lisp/<name>/=)
+- =:url=   URL git du repo
+- =:ref=   commit SHA (pin)
+- (optionnel) =:branch= ou =:remote= si besoin, mais Void préfère *SHA only*.
+
+Exemple conceptuel (forme, pas contenu final) :
+
+- name: vertico
+  url:  ...
+  ref:  <sha>
+
+** Dépendances Void Base (v1)
+
+Les dépendances *obligatoires* (socle) sont :
+
+- vertico
+- marginalia
+- orderless
+- embark
+- consult
+- embark-consult
+- corfu
+- cape
+- olivetti
+
+Toute nouvelle dépendance doit être ajoutée ici et pinnée.
+
+** Règles de nommage
+
+- Le champ =:name= correspond *exactement* au dossier dans =site-lisp/=.
+- Les features Emacs (=provide=) peuvent différer du nom du dossier, mais Void garde le nom de dossier
+  comme identifiant canonique pour les scripts.
+
+** Scripts =bin/= et comportement attendu
+
+Les scripts shell utilisent =void-pins.el= comme source de vérité.
+
+*** =bin/void-bootstrap=
+- Crée =site-lisp/= si nécessaire.
+- Clone chaque dépendance manquante dans =site-lisp/<name>/=.
+- Checkout le commit =:ref=.
+- Lance (optionnel) compilation native / byte-compile selon la policy Void.
+
+*** =bin/void-sync=
+- Force chaque repo à l’état exact :
+  - fetch (si nécessaire)
+  - checkout =:ref=
+  - reset propre si le repo est sale (policy explicite, jamais silencieuse)
+
+*** =bin/void-pin=
+- Lit l’état actuel de chaque repo (=HEAD=).
+- Met à jour =:ref= dans =lisp/void-pins.el=.
+- Ne modifie jamais les URLs sans action explicite.
+
+*** =bin/void-update=
+- Met à jour les repos (fetch/pull) *sans changer les pins* par défaut.
+- Option : =--repin= pour mettre à jour les pins vers les nouveaux HEAD.
+- Option : =--compile= pour reconstruire après update.
+
+** Sécurité / garde-fous
+
+- Aucune action destructive implicite : un reset/clean doit être explicite ou documenté clairement.
+- Les pins restent la vérité : un update ne doit pas “déplacer” l’état sans l’écrire dans =void-pins.el=.
+- Les erreurs doivent être bruyantes (exit non-zero) : Void préfère échouer proprement plutôt que continuer.
+
+* Scripts bin/
+
+Void fournit des scripts shell simples et explicites :
+
+- =void-bootstrap= : clone les dépendances, checkout les pins, compile
+- =void-update=    : met à jour les repos (optionnellement repin)
+- =void-pin=       : enregistre les commits actuels dans =void-pins.el=
+- =void-sync=      : force l’état exact défini par les pins
+- =void-clean=     : nettoyage sûr de =var/= et =cache/= (optionnel)
+
+Aucun script ne doit faire d’action implicite ou destructive.
+
+* Organisation du code Lisp
+
+- Tout le code Void est préfixé par =void-=
+- Pas de =use-package=
+- Chargement explicite via =require=
+- =void-core.el= expose une mini-API utilitaire (légère)
+- Chaque fichier a une responsabilité claire
+
+* Org-mode
+
+Org est utilisé comme :
+
+- documentation
+- journal de décisions
+- source de vérité conceptuelle
+
+Le code reste dans des fichiers =.el=. Void n’utilise pas de tangle.
+
+* Roadmap
+
+- [ ] Sanity layer (defaults, backups, perf)
+- [ ] Stack de complétion (Vertico / Corfu)
+- [ ] Dev (project.el, eglot, flymake)
+- [ ] Focus mode (Olivetti)
+- [ ] Thème Void (custom-theme minimal sombre)
+- [ ] Extensions optionnelles (Git, help, etc.)
+
+#+begin_quote
+Void est conçu pour durer.
+#+end_quote
